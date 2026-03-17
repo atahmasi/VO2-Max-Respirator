@@ -28,24 +28,24 @@ set(PICO_BOARD pico2_w CACHE STRING "Board type")
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
 
-project(hello_adc C CXX ASM)
+project(VO2 C CXX ASM)
 
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
-# Add executable. Default name is the project name, version 0.1
+# Add executable
+add_executable(VO2
+        VO2.c
+        functions.c
+)
 
-add_executable(hello_adc
-        hello_adc.c
-        )
-
-target_link_libraries(hello_adc pico_stdlib hardware_adc)
+target_link_libraries(VO2 pico_stdlib hardware_adc)
 
 # enable usb output, disable uart output
-    pico_enable_stdio_usb(hello_adc 1)
-    pico_enable_stdio_uart(hello_adc 0)
+pico_enable_stdio_usb(VO2 1)
+pico_enable_stdio_uart(VO2 0)
 
 # create map/bin/hex file etc.
-pico_add_extra_outputs(hello_adc)
+pico_add_extra_outputs(VO2)
 
 # add url via pico_set_program_url

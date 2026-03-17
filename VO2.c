@@ -6,61 +6,45 @@
 
 #include <stdio.h>
 #include "pico/stdlib.h"
-#include "hardware/gpio.h"
 #include "hardware/adc.h"
 #include "functions.h"
 
-#define AVG_SAMPLES0 300
-#define AVG_SAMPLES1 300
-
 int main() {
     stdio_init_all();
-    sleep_ms(2000);  
+    sleep_ms(2000);
 
-    //adc init
+    // ADC initialization
     adc_init();
-    adc_gpio_init(26);
-    adc_gpio_init(27);
+    adc_gpio_init(26); // ADC0
+    adc_gpio_init(27); // ADC1
 
+    // Venturi parameters
+    const float A1 = 26e-3f;     // 26 mm
+    const float A2 = 20e-3f;     // 20 mm
+    const float rho = 1.225f;    // air density
 
-
-
-    const float VREF = 3.3f;
-    const float ADC_MAX = 4095.0f; // 12-bit
-
-    uint16_t buffer0[AVG_SAMPLES0] = {0};
-    uint32_t sum0 = 0;
-    int index0 = 0;
-
-
-    uint16_t buffer1[AVG_SAMPLES1] = {0};
-    uint32_t sum1 = 0;
-    int index1 = 0;
-
-
+    const float alpha = 0.05f;   // smoothing factor
 
     while (true) {
-        adc_select_input(0);
-        uint16_t rpress = adc_read();
 
-        // Remove oldest sample
-        sum1 -= buffer1[index1];
+        // --- Read ADC channels ---
+        uint16_t rpress = readadc(1);
+        uint16_t ro2    = readadc(0);
 
-        // Store new sample
-        buffer1[index1] = rpress;
+        // --- Convert ADC values ---
+        float Pa = press_out(rpress);
+        float o2 = o2_out(ro2);
 
-        // Add new sample
-        sum1 += rpress;
+        // --- Calculate airflow ---
+        float Q = airflow(Pa, A1, A2, rho);
 
-        // Move circular index
-        index1 = (index1 + 1) % AVG_SAMPLES1;
+        // --- Smooth airflow ---
+        float Q_avg = moving_avg(Q, alpha);
 
-        // Compute averaged value
-        float avg_raw1 = (float)sum1 / AVG_SAMPLES1;
-        float voltage1 = (avg_raw1 * VREF) / ADC_MAX;
+        // --- Output ---
+        printf("Pressure: %.2f Pa  O2: %.2f %%  Flow: %.5f  AvgFlow: %.5f\n",
+               Pa, o2, Q, Q_avg);
 
-        printf("Raw: %4u  AvgRaw: %.2f  Voltage: %.3f V\n", rpress, avg_raw1, voltage1);
-
-        sleep_ms(10);
+        sleep_ms(100);
     }
 }

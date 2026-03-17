@@ -1,6 +1,7 @@
 #include "hardware/adc.h"
 #include <stdint.h>
 #include "functions.h"
+#include <math.h>
 
 //ADC read function. Can only be called after adc has been initialized. 
 uint16_t readadc(uint16_t channel){
@@ -11,14 +12,14 @@ uint16_t readadc(uint16_t channel){
 float press_out(uint16_t adc_step){
     //Pa/step = 2.44140625
     //Avg zero offset = 403.5
-    float Pa = adc_step*2.44140625 + 403.5;
+    float Pa = adc_step*2.44140625 - 403.5;
     return Pa;
 }
 
 float o2_out(uint16_t adc_step){
     //@ 20.9% o2, 3096.5 step avg
     //(measured 23.5k res) percent/steps = 0.00674955595
-    float o2 = 3096.5 - adc_step * 0.00674955595;
+    float o2 = adc_step * 0.00674955595;
     return o2;
 }
 
@@ -36,4 +37,13 @@ float airflow(float Pa, float A1, float A2, float rho){
 
     return Q;
 
+}
+
+float moving_avg(float new_value, float alpha)
+{
+    static float avg = 0.0f;
+
+    avg = alpha * new_value + (1.0f - alpha) * avg;
+
+    return avg;
 }
