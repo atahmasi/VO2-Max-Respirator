@@ -22,7 +22,7 @@ const float A1 = PI * (D1 * D1) / 4.0f;
 const float A2 = PI * (D2 * D2) / 4.0f;
 
 const float rho = 1.225f;    // air density
-const float alpha = 0.15f;   // smoothing factor
+const float alpha = 0.01f;   // smoothing factor
 
 extern uint16_t current_ble_val;
 int main() {
@@ -52,12 +52,14 @@ int main() {
         // --- Smooth airflow ---
         float Q_avg = moving_avg(Q, alpha);
 
+        current_ble_val = (uint16_t)(Q_avg * o2/77);
+
         // --- Output ---
-        printf("Pressure: %.2f Pa  O2: %.2f %%  Flow: %.5f  AvgFlow: %.5f\n",
-               Pa, o2, Q, Q_avg);
+        printf("Pressure: %.2f Pa  O2: %.2f %%  Flow: %.5f  AvgFlow: %.5f VO2: %u\n",
+               Pa, o2, Q, Q_avg, current_ble_val);
         
-        //current_ble_val = (uint16_t)Q_avg;
-        current_ble_val = 5;
+        //current_ble_val = 5;
+        //setting to 5 works.
         ble_process();
         sleep_ms(100);
     }

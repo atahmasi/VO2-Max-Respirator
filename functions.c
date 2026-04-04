@@ -11,8 +11,11 @@ uint16_t readadc(uint16_t channel){
 
 float press_out(uint16_t adc_step){
     //Pa/step = 2.44140625
-    //Avg zero offset = 403.5
-    float Pa = adc_step*2.44140625 - 403.5;
+    float Pa = adc_step*2.44140625 - 1000;
+    if(Pa < 0)
+    {
+        Pa = -100;
+    }
     return Pa;
 }
 
@@ -33,17 +36,33 @@ float airflow(float Pa, float A1, float A2, float rho){
 
     float velocity = sqrtf((2.0f * Pa) / denom);
 
-    float Q = A2 * velocity;
-
+    // times 6000 to convert from m/s to l/min
+    float Q = A2 * velocity * 60000*6;
+    if (isnan(Q)) {
+        Q = -300;
+    }
     return Q;
 
 }
+
 
 float moving_avg(float new_value, float alpha)
 {
     static float avg = 0.0f;
 
+    // Reject invalid inputs
+    if (isnan(new_value) || isnan(avg)) {
+        //avg = 1.4;
+        avg = (alpha * 0) + (1.0f - alpha) * avg;
+        return avg;
+    }
+
+    // Clamp alpha
+    if (alpha < 0.0f) alpha = 0.0f;
+    if (alpha > 1.0f) alpha = 1.0f;
+
     avg = alpha * new_value + (1.0f - alpha) * avg;
 
     return avg;
 }
+
