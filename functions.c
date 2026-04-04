@@ -17,9 +17,9 @@ float press_out(uint16_t adc_step){
 }
 
 float o2_out(uint16_t adc_step){
-    //@ 20.9% o2, 3096.5 step avg
-    //(measured 23.5k res) percent/steps = 0.00674955595
-    float o2 = adc_step * 0.00674955595;
+    //@ 20.9% o2, 3200 avg at normal o2
+    //(measured 23.5k res) percent/steps = 0.0066349206349
+    float o2 = adc_step * 0.0066349206349;
     return o2;
 }
 

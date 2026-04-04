@@ -37,13 +37,26 @@ pico_sdk_init()
 add_executable(VO2
         VO2.c
         functions.c
+        ble.c
 )
 
-target_link_libraries(VO2 pico_stdlib hardware_adc)
+target_link_libraries(VO2 
+            pico_stdlib
+            pico_btstack_ble
+            pico_btstack_cyw43
+            pico_cyw43_arch_none
+            hardware_adc
+            )
 
 # enable usb output, disable uart output
 pico_enable_stdio_usb(VO2 1)
 pico_enable_stdio_uart(VO2 0)
+
+target_include_directories(VO2 PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}
+    ${CMAKE_CURRENT_LIST_DIR}/.. # For our common btstack config
+    )
+pico_btstack_make_gatt_header(VO2 PRIVATE "${CMAKE_CURRENT_LIST_DIR}/VO2.gatt")
 
 # create map/bin/hex file etc.
 pico_add_extra_outputs(VO2)
