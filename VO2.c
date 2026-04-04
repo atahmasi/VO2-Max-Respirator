@@ -22,10 +22,24 @@ const float A1 = PI * (D1 * D1) / 4.0f;
 const float A2 = PI * (D2 * D2) / 4.0f;
 
 const float rho = 1.225f;    // air density
-const float alpha = 0.01f;   // smoothing factor
+const float alpha = 0.1f;   // smoothing factor
 
 extern uint16_t current_ble_val;
 int main() {
+
+    uint16_t rpress = 0;
+    uint16_t ro2    = 0;
+
+   
+    float Pa = 0;
+    float o2 = 0;
+
+    float Q = 0;
+    float Q_denoise = 0;
+
+
+    float Q_avg = 0;
+
     stdio_init_all();
     sleep_ms(2000);
 
@@ -39,18 +53,21 @@ int main() {
     while (true) {
 
         // --- Read ADC channels ---
-        uint16_t rpress = readadc(1);
-        uint16_t ro2    = readadc(0);
+        rpress = readadc(1);
+        ro2    = readadc(0);
 
         // --- Convert ADC values ---
-        float Pa = press_out(rpress);
-        float o2 = o2_out(ro2);
+        Pa = press_out(rpress);
+        o2 = o2_out(ro2);
 
         // --- Calculate airflow ---
-        float Q = airflow(Pa, A1, A2, rho);
+        Q = airflow(Pa, A1, A2, rho);
+
+        // --- Detect and remove large jumps from noise ---
+        Q_denoise = noise_filter(Q_denoise, Q, 100);
 
         // --- Smooth airflow ---
-        float Q_avg = moving_avg(Q, alpha);
+        Q_avg = moving_avg(Q_denoise, alpha);
 
         current_ble_val = (uint16_t)(Q_avg * o2/77);
 
@@ -66,4 +83,4 @@ int main() {
 }
 
 //note to self: look into the static const use of profile_data, it creates multiple copies per file. 
-//also, look into changing value sent from decimal to uintwhatever similar to example; currently stuck on 0.
+//look into filtering o2 and pressure prior to putting into flow calc. 

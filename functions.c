@@ -37,14 +37,26 @@ float airflow(float Pa, float A1, float A2, float rho){
     float velocity = sqrtf((2.0f * Pa) / denom);
 
     // times 6000 to convert from m/s to l/min
-    float Q = A2 * velocity * 60000*6;
+    float Q = A2 * velocity * 60000;
     if (isnan(Q)) {
-        Q = -300;
+        Q = 0;
     }
     return Q;
 
 }
 
+float noise_filter(float prev, float next, float noise_limit)
+{
+    static float filtered = 0;
+    if(next - noise_limit > prev)
+    {
+        filtered = (3*prev + next)/4;
+    } else 
+    {
+        filtered = next;
+    }
+    return filtered;
+}
 
 float moving_avg(float new_value, float alpha)
 {
