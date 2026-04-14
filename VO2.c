@@ -9,6 +9,8 @@
 #include "hardware/adc.h"
 #include "functions.h"
 #include "ble.h"
+#include "dsp.h"
+#include "spi_mcp3204.h"
 
 //#include "btstack_config_common.h"
 //#include "btstack_config.h"
@@ -24,7 +26,7 @@ const float A2 = PI * (D2 * D2) / 4.0f;
 const float rho = 1.225f;    // air density
 const float alpha = 0.1f;   // smoothing factor
 
-extern uint16_t current_ble_val;
+extern volatile uint16_t current_ble_val;
 int main() {
 
     uint16_t rpress = 0;
@@ -32,7 +34,7 @@ int main() {
 
    
     float Pa = 0;
-    float o2 = 0;
+    float o2_diff = 0;
 
     float Q = 0;
     float Q_denoise = 0;
@@ -47,7 +49,7 @@ int main() {
     adc_init();
     adc_gpio_init(26); // ADC0
     adc_gpio_init(27); // ADC1
-
+    mcp3204_init();
     ble_init();
 
     while (true) {
@@ -55,10 +57,12 @@ int main() {
         // --- Read ADC channels ---
         rpress = readadc(1);
         ro2    = readadc(0);
+       /* rpress = mcp3204_read(1);
+        ro2 = mcp3204_read(0);*/
 
         // --- Convert ADC values ---
         Pa = press_out(rpress);
-        o2 = o2_out(ro2);
+        o2_diff = o2_out(ro2);
 
         // --- Calculate airflow ---
         Q = airflow(Pa, A1, A2, rho);
@@ -69,11 +73,11 @@ int main() {
         // --- Smooth airflow ---
         Q_avg = moving_avg(Q_denoise, alpha);
 
-        current_ble_val = (uint16_t)(Q_avg * o2/77);
+        current_ble_val = (uint16_t)(Q_avg * o2_diff/77);
 
         // --- Output ---
         printf("Pressure: %.2f Pa  O2: %.2f %%  Flow: %.5f  AvgFlow: %.5f VO2: %u\n",
-               Pa, o2, Q, Q_avg, current_ble_val);
+               Pa, o2_diff, Q, Q_avg, current_ble_val);
         
         //current_ble_val = 5;
         //setting to 5 works.
@@ -83,4 +87,4 @@ int main() {
 }
 
 //note to self: look into the static const use of profile_data, it creates multiple copies per file. 
-//look into filtering o2 and pressure prior to putting into flow calc. 
+//look into filtering o2 and pressure prior to putting into flow calc.  

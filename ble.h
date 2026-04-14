@@ -10,7 +10,7 @@ int ble_init(void);
 void ble_process(void);
 
 
-//extern volatile bool key_pressed;
-extern uint16_t current_ble_val;
+
+extern volatile uint16_t current_ble_val;
 extern const uint8_t profile_data[];
 #endif

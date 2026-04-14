@@ -7,65 +7,83 @@
 #include "ble.h"
 //#include "btstack_config_common.h"
 //#include "btstack_config.h"
+
+//Defines BLE interval
 #define HEARTBEAT_PERIOD_MS 100
 //#define ADC_CHANNEL_TEMPSENSOR 4
+
+// Defines BLE advertising flag. sets to generally discoverable 
+// with BLE only (no classic bluetooth)
 #define APP_AD_FLAGS 0x06
 
-
-
-
-
-
-
-
+//Raw BLE advertising packet ()
 static uint8_t adv_data[] = {
-    // Flags general discoverable
+    // Flags general discoverable as a ble device
     0x02, BLUETOOTH_DATA_TYPE_FLAGS, APP_AD_FLAGS,
-    // Name
+    // Name (MAC address)
     0x17, BLUETOOTH_DATA_TYPE_COMPLETE_LOCAL_NAME, 'P', 'i', 'c', 'o', ' ', '0', '0', ':', '0', '0', ':', '0', '0', ':', '0', '0', ':', '0', '0', ':', '0', '0',
+    //Service uuid (universally unique identifier). 0x181a states its an environmental sensing (temp) device
+    // 0x181a because ble are little endian. Reminder to update uuid. 
     0x03, BLUETOOTH_DATA_TYPE_COMPLETE_LIST_OF_16_BIT_SERVICE_CLASS_UUIDS, 0x1a, 0x18,
 };
 
-static const uint8_t adv_data_len = sizeof(adv_data);
-
-int le_notification_enabled;
-hci_con_handle_t con_handle;
-uint16_t current_ble_val;
-static btstack_timer_source_t heartbeat;
-static btstack_packet_callback_registration_t hci_event_callback_registration;
-
-extern uint8_t const profile_data[];
+static const uint8_t adv_data_len = sizeof(adv_data);  //should be 31 bytes if i counted correctly 
 
 
+int le_notification_enabled; // if phone ble notification enabled, updated in cccwrite
+hci_con_handle_t con_handle; // Connection ID
+volatile uint16_t current_ble_val; // Data to send over to phone
+static btstack_timer_source_t heartbeat; //timer object for btstack loop
+static btstack_packet_callback_registration_t hci_event_callback_registration; //used to register event handler
+
+extern uint8_t const profile_data[]; // GATT database found in vo2_gatt.ht
+
+
+//MAIN EVENT HANDLER
 static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size) 
 {
     UNUSED(size);
     UNUSED(channel);
     bd_addr_t local_addr;
-    if (packet_type != HCI_EVENT_PACKET) return;
+    if (packet_type != HCI_EVENT_PACKET) return; //only look at bluetooth event otherwise exit
 
     uint8_t event_type = hci_event_packet_get_type(packet);
+    // Check event type
     switch(event_type){
+        //Set up bt stack
         case BTSTACK_EVENT_STATE:
+            //First check if its fully initialized
             if (btstack_event_state_get_state(packet) != HCI_STATE_WORKING) return;
+
+            //prints pico mac address
             gap_local_bd_addr(local_addr);
             printf("BTstack up and running on %s.\n", bd_addr_to_str(local_addr));
 
             // setup advertisements
+            // about 800 = 500 ms... dont know why this value was chosen but it works 
             uint16_t adv_int_min = 800;
             uint16_t adv_int_max = 800;
+
+            // set to normal ble (connectable undirectable device)
             uint8_t adv_type = 0;
+            // set no specific target device so it can broadcast to anything
             bd_addr_t null_addr;
             memset(null_addr, 0, 6);
+
+            //apply settings
             gap_advertisements_set_params(adv_int_min, adv_int_max, adv_type, 0, null_addr, 0x07, 0x00);
-            assert(adv_data_len <= 31); // ble limitation
+            assert(adv_data_len <= 31); // otherwise ble breaks if data len is not standard
+            //sets gap ad data and then makes pico visible
             gap_advertisements_set_data(adv_data_len, (uint8_t*) adv_data);
             gap_advertisements_enable(1);
 
             break;
+        //device disconnected, turn off ble notifs
         case HCI_EVENT_DISCONNECTION_COMPLETE:
             le_notification_enabled = 0;
             break;
+        //Ready to send data (conn handle = connection id). 
+        // Send data as temperature for now... reminder to change that
         case ATT_EVENT_CAN_SEND_NOW:
             att_server_notify(con_handle, ATT_CHARACTERISTIC_ORG_BLUETOOTH_CHARACTERISTIC_TEMPERATURE_01_VALUE_HANDLE, (uint8_t*)&current_ble_val, sizeof(current_ble_val));
             break;
@@ -77,7 +95,8 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
 static uint16_t att_read_callback(hci_con_handle_t connection_handle, uint16_t att_handle, uint16_t offset, uint8_t * buffer, uint16_t buffer_size) 
 {
     UNUSED(connection_handle);
-
+    //if client trying to read temp value, copies ble val to buffer. 
+    // Callback handle blob safely handles partial reads, buffer overflow, and works for any data size
     if (att_handle == ATT_CHARACTERISTIC_ORG_BLUETOOTH_CHARACTERISTIC_TEMPERATURE_01_VALUE_HANDLE){
         return att_read_callback_handle_blob((const uint8_t *)&current_ble_val, sizeof(current_ble_val), offset, buffer, buffer_size);
     }
@@ -90,6 +109,8 @@ static int att_write_callback(hci_con_handle_t connection_handle, uint16_t att_h
     UNUSED(offset);
     UNUSED(buffer_size);
 
+    // Checks if att (attribute) handle matches. if so, allow writes to things like notif enabling. 
+    // Afterwards allow client to write to pico. 
     if (att_handle != ATT_CHARACTERISTIC_ORG_BLUETOOTH_CHARACTERISTIC_TEMPERATURE_01_CLIENT_CONFIGURATION_HANDLE) return 0;
     le_notification_enabled = little_endian_read_16(buffer, 0) == GATT_CLIENT_CHARACTERISTICS_CONFIGURATION_NOTIFICATION;
     con_handle = connection_handle;
@@ -104,7 +125,7 @@ static void heartbeat_handler(struct btstack_timer_source *ts)
     static uint32_t counter = 0;
     counter++;
 
-    // Update the temp every 10s
+    // Update the temp every 1s. 100ms delay set by heartbeat period
     if (counter % 10 == 0) {
         //poll_temp();
         if (le_notification_enabled) {
@@ -117,7 +138,7 @@ static void heartbeat_handler(struct btstack_timer_source *ts)
     led_on = !led_on;
     cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, led_on);
 
-    // Restart timer
+    // Restart timer and reinitialize. Keep loop going
     btstack_run_loop_set_timer(ts, HEARTBEAT_PERIOD_MS);
     btstack_run_loop_add_timer(ts);
 }
@@ -125,14 +146,14 @@ static void heartbeat_handler(struct btstack_timer_source *ts)
 static volatile bool key_pressed;
 void key_pressed_func(void *param)
 {
-    int key = getchar_timeout_us(0); // get any pending key press but don't wait
+    int key = getchar_timeout_us(0); 
     if (key == 's' || key == 'S') {
         key_pressed = true;
     }
 }
 
 int ble_init()
-{
+{   //ble chip init
     if (cyw43_arch_init()) {
         printf("failed to initialise cyw43_arch\n");
         return -1;
@@ -142,7 +163,7 @@ int ble_init()
     printf("Press the \"S\" key to Stop bluetooth\n");
     stdio_set_chars_available_callback(key_pressed_func, NULL);
 
-    //Logical Link Control and Adaptation Protocol init (data transport layer)
+    //Logical Link Control and Adaptation Protocol init (data transport)
     l2cap_init();
     //Security Manager init
     sm_init();
