@@ -1,5 +1,7 @@
-#include "spi_mcp3204.h"
 #include "pico/stdlib.h"
+#include "hardware/spi.h"
+#include "spi_mcp3204.h"
+
 
 
 static inline void cs_select() {

@@ -1,7 +1,6 @@
 #ifndef SPI_MCP3204_H
 #define SPI_MCP3204_H
 
-#include "hardware/spi.h"
 #include <stdio.h>
 
 #define SPI_PORT spi0

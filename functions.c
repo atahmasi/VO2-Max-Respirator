@@ -14,7 +14,7 @@ float press_out(uint16_t adc_step){
     float Pa = adc_step*2.44140625 - 1000;
     if(Pa < 0)
     {
-        Pa = -100;
+        Pa = 0;
     }
     return Pa;
 }

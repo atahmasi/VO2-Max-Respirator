@@ -40,6 +40,7 @@ add_executable(VO2
         ble.c
         dsp.c
         spi_mcp3204.c
+        isr.c
 )
 
 target_link_libraries(VO2 
@@ -49,6 +50,8 @@ target_link_libraries(VO2
             pico_cyw43_arch_none
             hardware_adc
             hardware_spi
+            hardware_timer
+            pico_multicore
             )
 
 # enable usb output, disable uart output
