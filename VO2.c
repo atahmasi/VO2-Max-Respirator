@@ -79,20 +79,21 @@ void core1_entry() {
 
         // Smooth variables 
         Q_avg = moving_avg(Q_denoise, alpha);
-        o2_avg = moving_avg(o2_avg, alpha);
-        p_avg = moving_avg(p_avg, alpha);
+        //o2_avg = moving_avg(o2_avg, alpha);
+       // p_avg = moving_avg(p_avg, alpha);
 
         current_ble_val = (uint16_t)(Q_avg * o2_diff/77);
 
         // Print on everey x many loops
         print_divider++;
 
-        if (print_divider >= 100)
+        if (print_divider >= 10)
         {   
             print_divider = 0;
-
-            printf("Pressure: %.2f Pa  O2: %.2f %%  Flow: %.5f  AvgFlow: %.5f VO2: %u\n",
-                p_avg, o2_avg, Q, Q_avg, current_ble_val);
+            
+            //print to serial terminal for debug
+            printf("Pressure: %u Pa  O2: %u %%  Flow: %.5f  AvgFlow: %.5f VO2: %u\n",
+                rpress_sample, ro2_sample, Q, Q_avg, current_ble_val);
         }
         
         //current_ble_val = 5;
