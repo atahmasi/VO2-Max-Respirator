@@ -1,5 +1,21 @@
 # VO2-Max-Respirator
 Portable VO2 max respirator to measure biometric VO2. Reads airflow from respirator mask, sends output to phone via BLE. 
+<p align="center">
+  <img src="imgs/mask.jpeg" width="300"/>
+    <img src="imgs/PCB.jpeg" width="300"/>
+</p>
+
+## Operation
+VO2 Max respirator reads data from exhaled breath of user and sends output via BLE. Demo using NRF connect app:
+
+<p align="center">
+  <img src="imgs/ble.gif" width="200"/>
+</p>
+
+(This is my resting VO2. My max is much, much, much higher than that)
+
+This shows how the user can read the VO2 values calculated by the mask via BLE. Any bluetooth reader app can work, as well as certain fitness apps such as strava.
+
 ## Overview
 
 This project implements a real-time embedded system for estimating **oxygen consumption (VO₂)** using a **Venturi-based airflow sensor** and an **analog O₂ sensor**, running on the Raspberry Pi Pico (RP2040).
@@ -44,6 +60,13 @@ The system performs high-rate data acquisition, signal processing, and wireless 
 * Analog oxygen sensor (SGX-40X with custom amplifier buffer)
 * External ADC (MCP3204)
 * Charge circuitry and battery powering (TP-4056 charger IC)
+* Able to charge battery using RPI micro USB port
+* ON/OFF switch operation
+
+<p align="center">
+  <img src="imgs/PCB.jpeg" width="300"/>
+  <img src="imgs/schem.png" width="600"/>
+</p>
 
 ---
 
@@ -82,9 +105,21 @@ Converted ADC data streams of O2 and pressure sensors to usable information.
 * Periodic notifications using `ATT_EVENT_CAN_SEND_NOW`
 * Data transmitted as 16-bit values for efficiency
 
+<p align="center">
+  <img src="imgs/NRF.png" width="200"/>
+</p>
+
+Example BLE advertising
+
+## Accuracy
+
+How accurate is it? Who knows! Soon I will test my true VO2 max in a lab and compare results.
+
+The individual sensors (o2 percentile, pressure from flow) seem to be accurate by themselves. The oxygen sensor tracks what is expected of average oxygen levels, as well as a corresponding drop when lower o2 air (from exhalation) surrounds it. 
+
+Pressure sensor tested via handheld bike bump with gauge, which seems accurate. Flow sensor calculation also seems to accurately track exhale volume (based on estimations of my own lung capacity). 
 
 ## Author
 
-Arthur
-Embedded / Firmware Engineer
+Me (Arthur) 
 
