@@ -30,7 +30,6 @@ const float alpha = 0.1f;   // smoothing factor
 
 extern volatile uint16_t current_ble_val;
 
-
 // Core 1: sampling + processing
 void core1_entry() {
     static int print_divider = 0;
@@ -57,19 +56,21 @@ void core1_entry() {
 
     while (true) {
 
-        //Read ADC channels
-        //rpress = readadc(1);
-       // ro2    = readadc(0);
+        // Isr; skip unless sample is ready
+        if (!sample_ready) continue;
+
+        uint8_t buffer = ready_buffer;
+        sample_ready = false;
+
+        // Read ADC channels
+        rpress = adc_buffers[buffer].rpress;
+        ro2    = adc_buffers[buffer].ro2;
        /* rpress = mcp3204_read(1);
         ro2 = mcp3204_read(0);*/
 
-        // Isr; skip unless sample is ready
-        if (!sample_ready) continue;
-        sample_ready = false;
-
         // Convert ADC values
-        Pa = press_out(rpress_sample);
-        o2_diff = o2_out(ro2_sample);
+        Pa = press_out(rpress);
+        o2_diff = o2_out(ro2);
 
         // Calculate airflow 
         Q = airflow(Pa, A1, A2, rho);
@@ -93,11 +94,11 @@ void core1_entry() {
             
             //print to serial terminal for debug
             printf("Pressure: %u Pa  O2: %u %%  Flow: %.5f  AvgFlow: %.5f VO2: %u\n",
-                rpress_sample, ro2_sample, Q, Q_avg, current_ble_val);
+                rpress, ro2, Q, Q_avg, current_ble_val);
         }
         
         //current_ble_val = 5;
-        //setting to 5 works.
+        //setting 5 works.
     }
 }
 

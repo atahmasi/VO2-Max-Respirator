@@ -5,11 +5,15 @@
 #include <stdint.h>
 #include "hardware/timer.h"
 
-extern volatile uint16_t rpress_sample;
-extern volatile uint16_t ro2_sample;
+typedef struct {
+    uint16_t rpress;
+    uint16_t ro2;
+} adc_sample_t;
+
+extern volatile adc_sample_t adc_buffers[2];
+extern volatile uint8_t ready_buffer;
 extern volatile bool sample_ready;
 
-// Init and start the sampling timer
 void isr_init(void);
 
 #endif
