@@ -83,7 +83,11 @@ void core1_entry() {
         //o2_avg = moving_avg(o2_avg, alpha);
        // p_avg = moving_avg(p_avg, alpha);
 
-        current_ble_val = (uint16_t)(Q_avg * o2_diff/77);
+        mutex_enter_blocking(&ble_val_mutex);
+
+        current_ble_val = (uint16_t)(Q_avg * o2_diff / 77);
+
+        mutex_exit(&ble_val_mutex);
 
         // Print on everey x many loops
         print_divider++;

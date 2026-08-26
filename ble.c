@@ -33,6 +33,7 @@ static const uint8_t adv_data_len = sizeof(adv_data);  //should be 31 bytes if i
 int le_notification_enabled; // if phone ble notification enabled, updated in cccwrite
 hci_con_handle_t con_handle; // Connection ID
 volatile uint16_t current_ble_val; // Data to send over to phone
+mutex_t ble_val_mutex;
 static btstack_timer_source_t heartbeat; //timer object for btstack loop
 static btstack_packet_callback_registration_t hci_event_callback_registration; //used to register event handler
 
@@ -85,7 +86,15 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
         //Ready to send data (conn handle = connection id). 
         // Send data as temperature for now... reminder to change that
         case ATT_EVENT_CAN_SEND_NOW:
-            att_server_notify(con_handle, ATT_CHARACTERISTIC_ORG_BLUETOOTH_CHARACTERISTIC_TEMPERATURE_01_VALUE_HANDLE, (uint8_t*)&current_ble_val, sizeof(current_ble_val));
+            uint16_t ble_val;
+
+            mutex_enter_blocking(&ble_val_mutex);
+
+            ble_val = current_ble_val;
+
+            mutex_exit(&ble_val_mutex);
+
+            att_server_notify(con_handle, ATT_CHARACTERISTIC_ORG_BLUETOOTH_CHARACTERISTIC_TEMPERATURE_01_VALUE_HANDLE, (uint8_t*)&ble_val, sizeof(ble_val));
             break;
         default:
             break;
@@ -153,7 +162,10 @@ void key_pressed_func(void *param)
 }
 
 int ble_init()
-{   //ble chip init
+{   
+    mutex_init(&ble_val_mutex);
+    
+    //ble chip init
     if (cyw43_arch_init()) {
         printf("failed to initialise cyw43_arch\n");
         return -1;
